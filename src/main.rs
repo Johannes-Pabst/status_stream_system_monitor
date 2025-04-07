@@ -39,7 +39,7 @@ async fn main() {
 
     // First we update all information of our `System` struct.
     sys.refresh_all();
-
+    
     println!("=> system:");
     // RAM and swap information:
     println!("total memory: {} bytes", sys.total_memory());
@@ -56,20 +56,25 @@ async fn main() {
     // Number of CPUs:
     println!("NB CPUs: {}", sys.cpus().len());
     std::thread::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL);
+    sys.refresh_all();
     // Display processes ID, name na disk usage:
-    for (pid, process) in sys.processes() {
-        println!("[{pid}] {:?} {:?}", process.name(), process.cpu_usage());
+    // for (pid, process) in sys.processes() {
+    //     println!("[{pid}] {:?} {:?}", process.name(), process.cpu_usage());
+    // }
+    for cpu in sys.cpus(){
+        println!("CPU {}: {}%",cpu.name(), cpu.cpu_usage());
     }
 
     // We display all disks' information:
-    println!("=> disks:");
-    let disks = Disks::new_with_refreshed_list();
-    for disk in &disks {
-        println!("{disk:?}");
-    }
+    // println!("=> disks:");
+    // let disks = Disks::new_with_refreshed_list();
+    // for disk in &disks {
+    //     println!("{disk:?}");
+    // }
 
     // Network interfaces name, total data received and total data transmitted:
     let networks = Networks::new_with_refreshed_list();
+    
     println!("=> networks:");
     for (interface_name, data) in &networks {
         println!(
