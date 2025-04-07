@@ -34,6 +34,9 @@ pub struct DataPoint {
 pub struct GraphSummary {
     pub name: String,
     pub description: String,
+    pub max:Option<f64>,
+    pub min:Option<f64>,
+    pub unit:String,
 }
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
 pub struct TestResult {
