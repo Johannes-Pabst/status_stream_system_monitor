@@ -23,7 +23,7 @@ pub trait Config: Sized + Serialize + for<'a> Deserialize<'a> {
         String: From<T>, T:Clone
     {
         let file_txt =
-            toml::to_string(self).map_err(|_| format!("couldn't serialize"))?;
+            toml::to_string(self).map_err(|e| format!("{}",e.to_string()))?;
         let mut f =
             File::create(String::from(s.clone())).map_err(|_| format!("file {} could not be created",String::from(s.clone())))?;
         f.write_all(file_txt.as_bytes())

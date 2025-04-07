@@ -1,5 +1,6 @@
 use std::{mem, sync::Arc, time::Duration};
 
+use serde::{Deserialize, Serialize};
 use tokio::{sync::RwLock, task::JoinHandle};
 
 use super::shared_data_types::{ClientAuth, DataPoint, GraphSummary, InformationPacket, Request, RequestWrapper, TestResult, RID};
@@ -111,6 +112,7 @@ impl CommunicationsManager {
         client.post(config.api_endpoint.clone()).body(data).send().await.map(|_|()).unwrap_or_else(|e|{println!("{}",e.to_string())});
     }
 }
+#[derive(Serialize,Deserialize, Clone)]
 pub struct CommunicationsConfig {
     pub api_key: Option<String>,
     pub api_endpoint: String,

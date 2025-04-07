@@ -1,0 +1,6 @@
+ram = true
+
+[com_config]
+api_endpoint = "127.0.0.1:7070/update_test"
+rid = 20
+max_buffered_update_calls = 100
