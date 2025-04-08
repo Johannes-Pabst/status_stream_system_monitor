@@ -1,6 +1,12 @@
 ram = true
+swap = true
+cpu = true
+cores = true
+network = true
+task_cpu = ["chrome.exe"]
+measurement_delay_secs = 10
 
 [com_config]
-api_endpoint = "127.0.0.1:7070/update_test"
+api_endpoint = "http://127.0.0.1:7070/update_test"
 rid = 20
-max_buffered_update_calls = 100
+max_buffered_update_calls = 6

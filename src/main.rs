@@ -1,12 +1,14 @@
 pub mod status_strem_status_provider;
+use std::time::Duration;
+
 use serde::{Deserialize, Serialize};
 use status_strem_status_provider::{
     communications::{CommunicationsConfig, CommunicationsManager},
     config::Config,
-    shared_data_types::GraphSummary,
+    shared_data_types::{DataPoint, GraphSummary},
     utils::ask_yn,
 };
-use sysinfo::{Components, Disks, Networks, System};
+use sysinfo::{Components, Networks, System};
 #[tokio::main]
 async fn main() {
     println!("Hello, World!");
@@ -18,12 +20,18 @@ async fn main() {
         ) {
             MonitorConfig {
                 com_config: CommunicationsConfig {
-                    api_endpoint: "127.0.0.1:7070/update_test".to_string(),
+                    api_endpoint: "http://127.0.0.1:7070/update_test".to_string(),
                     api_key: None,
                     max_buffered_update_calls: 100,
                     rid: 20,
                 },
                 ram: true,
+                swap: true,
+                network: true,
+                cores: true,
+                cpu: true,
+                task_cpu: vec!["chrome.exe".to_string()],
+                measurement_delay_secs:10
             }
             .save(configpath)
             .unwrap();
@@ -34,9 +42,21 @@ async fn main() {
             std::process::exit(1);
         }
     });
-    let gs: Vec<GraphSummary> = Vec::new();
-    let points:Vec<f64>=Vec::new();
     let mut sys = System::new_all();
+    std::thread::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL);
+    sys.refresh_all();
+    let (gs, data)=check_system(&server_config,&mut sys);
+    let com_manager = CommunicationsManager::new(server_config.com_config.clone(), gs);
+    com_manager.update_data_points(data, i64::MAX).await;
+    loop{
+        tokio::time::sleep(Duration::from_secs(server_config.measurement_delay_secs)).await;
+        let (_, data)=check_system(&server_config,&mut sys);
+        com_manager.update_data_points(data, i64::MAX).await;
+    }
+}
+fn check_system(server_config: &MonitorConfig,sys:&mut System)->(Vec<GraphSummary>, Vec<Vec<DataPoint>>){
+    let mut gs: Vec<GraphSummary> = Vec::new();
+    let mut points:Vec<f64>=Vec::new();
     sys.refresh_all();
     println!("total memory: {} bytes", sys.total_memory());
     println!("used memory : {} bytes", sys.used_memory());
@@ -44,8 +64,8 @@ async fn main() {
         gs.push(GraphSummary{
             name:"RAM".to_string(),
             description:"".to_string(),
-            max:Some(sys.total_memory()),
-            min:Some(0),
+            max:Some(sys.total_memory() as f64),
+            min:Some(0.0),
             unit:"bytes".to_string(),
         });
         points.push(sys.used_memory() as f64);
@@ -56,50 +76,36 @@ async fn main() {
         gs.push(GraphSummary{
             name:"Swap".to_string(),
             description:"".to_string(),
-            max:Some(sys.total_swap()),
-            min:Some(0),
+            max:Some(sys.total_swap() as f64),
+            min:Some(0.0),
             unit:"bytes".to_string(),
         });
         points.push(sys.used_swap() as f64);
     }
     println!("NB CPUs     : {}", sys.cpus().len());
-    std::thread::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL);
-    sys.refresh_all();
-    // Display processes ID, name na disk usage:
-    // for (pid, process) in sys.processes() {
-    //     println!("[{pid}] {:?} {:?}", process.name(), process.cpu_usage());
-    // }
     if server_config.cpu{
         gs.push(GraphSummary{
             name:"CPU".to_string(),
             description:"".to_string(),
-            max:Some(100),
-            min:Some(0),
+            max:Some(100.0),
+            min:Some(0.0),
             unit:"%".to_string(),
         });
-        points.push(sys.global_cpu_usage());
+        points.push(sys.global_cpu_usage() as f64);
     }
     if server_config.cores{
         for cpu in sys.cpus(){
             println!("CPU {}: {}%",cpu.name(), cpu.cpu_usage());
             gs.push(GraphSummary{
-            name:cpu.name(),
+            name:cpu.name().to_string(),
             description:"".to_string(),
-            max:Some(100),
-            min:Some(0),
-            unit:"".to_string(),
+            max:Some(100.0),
+            min:Some(0.0),
+            unit:"%".to_string(),
         });
-        points.push(cpu.cpu_usage());
+        points.push(cpu.cpu_usage() as f64);
         }
     }
-    // We display all disks' information:
-    // println!("=> disks:");
-    // let disks = Disks::new_with_refreshed_list();
-    // for disk in &disks {
-    //     println!("{disk:?}");
-    // }
-
-    // Network interfaces name, total data received and total data transmitted:
     let networks = Networks::new_with_refreshed_list();
     
     println!("=> networks:");
@@ -109,17 +115,14 @@ async fn main() {
             data.total_received(),
             data.total_transmitted(),
         );
-        // If you want the amount of data received/transmitted since last call
-        // to `Networks::refresh`, use `received`/`transmitted`.
     }
-
-    // Components temperature:
     let components = Components::new_with_refreshed_list();
     println!("=> components:");
     for component in &components {
         println!("{component:?}");
     }
-    let com_manager = CommunicationsManager::new(server_config.com_config.clone(), gs);
+    let time=chrono::Utc::now().timestamp_millis();
+    (gs,points.iter().map(|f| vec![DataPoint{timestamp:time,value:*f}]).collect::<Vec<Vec<DataPoint>>>())
 }
 #[derive(Serialize, Deserialize)]
 struct MonitorConfig {
@@ -130,5 +133,6 @@ struct MonitorConfig {
     cores:bool,
     network:bool,
     task_cpu:Vec<String>,
+    measurement_delay_secs:u64,
 }
 impl Config for MonitorConfig {}

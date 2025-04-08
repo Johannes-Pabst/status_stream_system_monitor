@@ -3,7 +3,10 @@ use std::{mem, sync::Arc, time::Duration};
 use serde::{Deserialize, Serialize};
 use tokio::{sync::RwLock, task::JoinHandle};
 
-use super::shared_data_types::{ClientAuth, DataPoint, GraphSummary, InformationPacket, Request, RequestWrapper, TestResult, RID};
+use super::shared_data_types::{
+    ClientAuth, DataPoint, GraphSummary, InformationPacket, Request, RequestWrapper, TestResult,
+    RID,
+};
 #[derive(Clone)]
 pub struct CommunicationsManager {
     pub config: Arc<RwLock<CommunicationsConfig>>,
@@ -33,21 +36,23 @@ impl CommunicationsManager {
         }
     }
     pub async fn update_data_points(&self, mut data_points: Vec<Vec<DataPoint>>, max_delay: i64) {
-        if data_points.len()>0{
-            let mut buf=self.buffer.write().await;
-            for (i, g) in data_points.iter_mut().enumerate(){
-                if buf.data_points.len()<=i{
-                    buf.data_points.push(g.clone());
-                }else{
-                    buf.data_points[i].append(g);
+        if data_points.len() > 0 {
+            {
+                let mut buf = self.buffer.write().await;
+                for (i, g) in data_points.iter_mut().enumerate() {
+                    if buf.data_points.len() <= i {
+                        buf.data_points.push(g.clone());
+                    } else {
+                        buf.data_points[i].append(g);
+                    }
                 }
             }
-            let mut buc=self.buffered_update_calls.write().await;
-            *buc+=1;
-            if *buc>=self.config.read().await.max_buffered_update_calls{
+            let mut buc = self.buffered_update_calls.write().await;
+            *buc += 1;
+            if *buc >= self.config.read().await.max_buffered_update_calls {
                 self.send().await;
-                *buc=0;
-            }else{
+                *buc = 0;
+            } else {
                 self.update_await(max_delay).await;
             }
         }
@@ -59,8 +64,8 @@ impl CommunicationsManager {
             return;
         } else {
             let lpst = chrono::Utc::now().timestamp() + max_delay;
-            let last_pos_send_time = self.last_pos_send_time.read().await;
-            if lpst < *last_pos_send_time {
+            let last_pos_send_time = *self.last_pos_send_time.read().await;
+            if lpst < last_pos_send_time {
                 *self.last_pos_send_time.write().await = lpst;
                 let mut st = self.cur_send_task.write().await;
                 if let Some(sts) = st.as_ref() {
@@ -78,9 +83,11 @@ impl CommunicationsManager {
         }
     }
     async fn send(&self) {
-        let st = self.cur_send_task.write().await;
-        if let Some(sts) = st.as_ref() {
-            sts.abort();
+        {
+            let st = self.cur_send_task.write().await;
+            if let Some(sts) = st.as_ref() {
+                sts.abort();
+            }
         }
         self.send_raw().await;
     }
@@ -99,20 +106,27 @@ impl CommunicationsManager {
         }
         self.send_raw_raw(buf).await;
     }
-    async fn send_raw_raw(&self,buffer: InformationPacket) {
+    async fn send_raw_raw(&self, buffer: InformationPacket) {
         let config = self.config.read().await;
-        let data=serde_json::to_string(&RequestWrapper{
-            auth: ClientAuth{
-                api_key:config.api_key.clone(),
+        let data = serde_json::to_string(&RequestWrapper {
+            auth: ClientAuth {
+                api_key: config.api_key.clone(),
             },
             request: Request::InformationCollector(buffer),
             rid: config.rid.clone(),
-        }).unwrap();
+        })
+        .unwrap();
         let client = reqwest::Client::new();
-        client.post(config.api_endpoint.clone()).body(data).send().await.map(|_|()).unwrap_or_else(|e|{println!("{}",e.to_string())});
+        client
+            .post(config.api_endpoint.clone())
+            .body(data)
+            .send()
+            .await
+            .map(|_| ())
+            .unwrap_or_else(|e| println!("{}", e.to_string()));
     }
 }
-#[derive(Serialize,Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct CommunicationsConfig {
     pub api_key: Option<String>,
     pub api_endpoint: String,
