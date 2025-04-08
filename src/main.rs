@@ -35,36 +35,63 @@ async fn main() {
         }
     });
     let gs: Vec<GraphSummary> = Vec::new();
+    let points:Vec<f64>=Vec::new();
     let mut sys = System::new_all();
-
-    // First we update all information of our `System` struct.
     sys.refresh_all();
-    
-    println!("=> system:");
-    // RAM and swap information:
     println!("total memory: {} bytes", sys.total_memory());
     println!("used memory : {} bytes", sys.used_memory());
+    if server_config.ram{
+        gs.push(GraphSummary{
+            name:"RAM".to_string(),
+            description:"".to_string(),
+            max:Some(sys.total_memory()),
+            min:Some(0),
+            unit:"bytes".to_string(),
+        });
+        points.push(sys.used_memory() as f64);
+    }
     println!("total swap  : {} bytes", sys.total_swap());
     println!("used swap   : {} bytes", sys.used_swap());
-
-    // Display system information:
-    println!("System name:             {:?}", System::name());
-    println!("System kernel version:   {:?}", System::kernel_version());
-    println!("System OS version:       {:?}", System::os_version());
-    println!("System host name:        {:?}", System::host_name());
-
-    // Number of CPUs:
-    println!("NB CPUs: {}", sys.cpus().len());
+    if server_config.swap{
+        gs.push(GraphSummary{
+            name:"Swap".to_string(),
+            description:"".to_string(),
+            max:Some(sys.total_swap()),
+            min:Some(0),
+            unit:"bytes".to_string(),
+        });
+        points.push(sys.used_swap() as f64);
+    }
+    println!("NB CPUs     : {}", sys.cpus().len());
     std::thread::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL);
     sys.refresh_all();
     // Display processes ID, name na disk usage:
     // for (pid, process) in sys.processes() {
     //     println!("[{pid}] {:?} {:?}", process.name(), process.cpu_usage());
     // }
-    for cpu in sys.cpus(){
-        println!("CPU {}: {}%",cpu.name(), cpu.cpu_usage());
+    if server_config.cpu{
+        gs.push(GraphSummary{
+            name:"CPU".to_string(),
+            description:"".to_string(),
+            max:Some(100),
+            min:Some(0),
+            unit:"%".to_string(),
+        });
+        points.push(sys.global_cpu_usage());
     }
-
+    if server_config.cores{
+        for cpu in sys.cpus(){
+            println!("CPU {}: {}%",cpu.name(), cpu.cpu_usage());
+            gs.push(GraphSummary{
+            name:cpu.name(),
+            description:"".to_string(),
+            max:Some(100),
+            min:Some(0),
+            unit:"".to_string(),
+        });
+        points.push(cpu.cpu_usage());
+        }
+    }
     // We display all disks' information:
     // println!("=> disks:");
     // let disks = Disks::new_with_refreshed_list();
@@ -98,5 +125,10 @@ async fn main() {
 struct MonitorConfig {
     com_config: CommunicationsConfig,
     ram: bool,
+    swap: bool,
+    cpu:bool,
+    cores:bool,
+    network:bool,
+    task_cpu:Vec<String>,
 }
 impl Config for MonitorConfig {}
