@@ -2,23 +2,18 @@ use std::error::Error;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
-pub struct RequestWrapper {
-    pub request: Request,
+#[derive(Serialize)]
+pub struct RequestWrapper<'a> {
+    pub request: Request<'a>,
     pub rid: RID,
-    pub auth: ClientAuth,
 }
-#[derive(Serialize, Deserialize, Clone)]
-pub enum Request {
-    InformationCollector(InformationPacket),
+#[derive(Serialize, Clone)]
+pub enum Request<'a> {
+    InformationCollector(&'a InformationPacket),
     Filler,
 }
 pub type RID = u32;
 pub type GID = u32;
-#[derive(Serialize, Deserialize, Clone)]
-pub struct ClientAuth {
-    pub api_key: Option<String>,
-}
 #[derive(Serialize, Deserialize, Clone)]
 pub struct InformationPacket {
     pub status: TestResult,

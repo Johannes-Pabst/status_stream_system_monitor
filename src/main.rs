@@ -3,15 +3,11 @@ use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 use status_strem_status_provider::{
-    communications::{CommunicationsConfig, CommunicationsManager},
-    config::Config,
-    shared_data_types::{DataPoint, GraphSummary},
-    utils::ask_yn,
+    communications::{CommunicationsConfig, CommunicationsManager}, config::Config, shared_data_types::{DataPoint, GraphSummary}, utils::ask_yn
 };
 use sysinfo::{Components, Networks, System};
 #[tokio::main]
 async fn main() {
-    println!("Hello, World!");
     let configpath = "config.toml";
     let server_config = MonitorConfig::load(configpath).unwrap_or_else(|_| {
         if ask_yn(
@@ -20,10 +16,13 @@ async fn main() {
         ) {
             MonitorConfig {
                 com_config: CommunicationsConfig {
-                    api_endpoint: "http://127.0.0.1:7070/update_test".to_string(),
-                    api_key: None,
-                    max_buffered_update_calls: 100,
-                    rid: 20,
+                    api_endpoint: "http://127.0.0.1:7070".to_string(),
+                    max_buffered_update_calls: 2,
+                    rid: 1,
+                    kc_client_id:"self-system-monitor".to_string(),
+                    kc_client_secret:"8g3J21qfCAOTYjI2a2vDoG5WLkdNjkG2".to_string(),
+                    kc_realm:"self".to_string(),
+                    kc_url:"http://172.23.38.25:8080".to_string(),
                 },
                 ram: true,
                 swap: true,
