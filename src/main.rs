@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use status_strem_status_provider::{
     communications::{CommunicationsConfig, CommunicationsManager}, config::Config, shared_data_types::{DataPoint, GraphSummary}, utils::ask_yn
 };
-use sysinfo::{Components, Networks, System};
+use sysinfo::System;
 #[tokio::main]
 async fn main() {
     let configpath = "config.toml";
@@ -89,7 +89,6 @@ fn check_system(server_config: &MonitorConfig,sys:&mut System)->(Vec<GraphSummar
     }
     if server_config.cores{
         for cpu in sys.cpus(){
-            println!("CPU {}: {}%",cpu.name(), cpu.cpu_usage());
             gs.push(GraphSummary{
             name:cpu.name().to_string(),
             description:"".to_string(),
@@ -100,19 +99,13 @@ fn check_system(server_config: &MonitorConfig,sys:&mut System)->(Vec<GraphSummar
         points.push(cpu.cpu_usage() as f64);
         }
     }
-    let networks = Networks::new_with_refreshed_list();
+    // let networks = Networks::new_with_refreshed_list();
     
-    for (interface_name, data) in &networks {
-        println!(
-            "{interface_name}: {} B (down) / {} B (up)",
-            data.total_received(),
-            data.total_transmitted(),
-        );
-    }
-    let components = Components::new_with_refreshed_list();
-    for component in &components {
-        println!("{component:?}");
-    }
+    // for (interface_name, data) in &networks {
+    // }
+    // let components = Components::new_with_refreshed_list();
+    // for component in &components {
+    // }
     let time=chrono::Utc::now().timestamp_millis();
     (gs,points.iter().map(|f| vec![DataPoint{timestamp:time,value:*f}]).collect::<Vec<Vec<DataPoint>>>())
 }
