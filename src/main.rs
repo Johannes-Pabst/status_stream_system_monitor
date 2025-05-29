@@ -57,8 +57,6 @@ fn check_system(server_config: &MonitorConfig,sys:&mut System)->(Vec<GraphSummar
     let mut gs: Vec<GraphSummary> = Vec::new();
     let mut points:Vec<f64>=Vec::new();
     sys.refresh_all();
-    println!("total memory: {} bytes", sys.total_memory());
-    println!("used memory : {} bytes", sys.used_memory());
     if server_config.ram{
         gs.push(GraphSummary{
             name:"RAM".to_string(),
@@ -69,8 +67,6 @@ fn check_system(server_config: &MonitorConfig,sys:&mut System)->(Vec<GraphSummar
         });
         points.push(sys.used_memory() as f64);
     }
-    println!("total swap  : {} bytes", sys.total_swap());
-    println!("used swap   : {} bytes", sys.used_swap());
     if server_config.swap{
         gs.push(GraphSummary{
             name:"Swap".to_string(),
@@ -81,7 +77,6 @@ fn check_system(server_config: &MonitorConfig,sys:&mut System)->(Vec<GraphSummar
         });
         points.push(sys.used_swap() as f64);
     }
-    println!("NB CPUs     : {}", sys.cpus().len());
     if server_config.cpu{
         gs.push(GraphSummary{
             name:"CPU".to_string(),
@@ -107,7 +102,6 @@ fn check_system(server_config: &MonitorConfig,sys:&mut System)->(Vec<GraphSummar
     }
     let networks = Networks::new_with_refreshed_list();
     
-    println!("=> networks:");
     for (interface_name, data) in &networks {
         println!(
             "{interface_name}: {} B (down) / {} B (up)",
@@ -116,7 +110,6 @@ fn check_system(server_config: &MonitorConfig,sys:&mut System)->(Vec<GraphSummar
         );
     }
     let components = Components::new_with_refreshed_list();
-    println!("=> components:");
     for component in &components {
         println!("{component:?}");
     }
